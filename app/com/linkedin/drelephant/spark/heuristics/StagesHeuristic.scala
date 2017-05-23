@@ -17,15 +17,16 @@
 package com.linkedin.drelephant.spark.heuristics
 
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.ExecutorSummary
+
 import scala.collection.JavaConverters
 import scala.concurrent.duration
 import scala.concurrent.duration.Duration
-
-import com.linkedin.drelephant.analysis.{Heuristic, HeuristicResult, HeuristicResultDetails, Severity, SeverityThresholds}
+import com.linkedin.drelephant.analysis._
 import com.linkedin.drelephant.configurations.heuristic.HeuristicConfigurationData
 import com.linkedin.drelephant.math.Statistics
 import com.linkedin.drelephant.spark.data.SparkApplicationData
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.StageData
+import org.apache.log4j.Logger
 import org.apache.spark.status.api.v1.StageStatus
 
 
@@ -100,6 +101,7 @@ class StagesHeuristic(private val heuristicConfigurationData: HeuristicConfigura
 }
 
 object StagesHeuristic {
+  private val logger = org.apache.log4j.Logger.getLogger(StagesHeuristic.getClass)
   /** The default severity thresholds for the rate of an application's stages failing. */
   val DEFAULT_STAGE_FAILURE_RATE_SEVERITY_THRESHOLDS =
     SeverityThresholds(low = 0.1D, moderate = 0.3D, severe = 0.5D, critical = 0.5D, ascending = true)
@@ -125,6 +127,16 @@ object StagesHeuristic {
 
   class Evaluator(stagesHeuristic: StagesHeuristic, data: SparkApplicationData) {
     lazy val stageDatas: Seq[StageData] = data.stageDatas
+
+    stageDatas.foreach(
+      stageData=>
+        logger.info(s"StageName:${stageData.name}\tstage:${stageData.stageId}\t" +
+          s"executorTime:${stageData.executorRunTime}\n" +
+          s"partitionNum:${stageData.numCompleteTasks+stageData.numFailedTasks}\n" +
+          s"inputDataSize:${stageData.inputBytes}\tinputRecords:${stageData.inputRecords}\n" +
+          s"outputDataSize:${stageData.outputBytes}\toutputRecords:${stageData.outputRecords}\n" +
+          s"shuffleReadBytes:${stageData.shuffleReadBytes}\tshuffleReadRecords:${stageData.shuffleReadRecords}\n" +
+          s"shuffleWriteBytes:${stageData.shuffleWriteBytes}\tshuffleWriteRecords:${stageData.shuffleWriteRecords}"))
 
     lazy val appConfigurationProperties: Map[String, String] =
       data.appConfigurationProperties

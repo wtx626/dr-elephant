@@ -255,12 +255,9 @@ public class AnalyticJob {
         }
       }
     }
-
-
     HadoopMetricsAggregator hadoopMetricsAggregator = ElephantContext.instance().getAggregatorForApplicationType(getAppType());
     hadoopMetricsAggregator.aggregate(data);
     HadoopAggregatedData hadoopAggregatedData = hadoopMetricsAggregator.getResult();
-
     // Load app information
     AppResult result = new AppResult();
     result.id = Utils.truncateField(getAppId(), AppResult.ID_LIMIT, getAppId());
@@ -274,7 +271,6 @@ public class AnalyticJob {
     result.resourceUsed = hadoopAggregatedData.getResourceUsed();
     result.totalDelay = hadoopAggregatedData.getTotalDelay();
     result.resourceWasted = hadoopAggregatedData.getResourceWasted();
-
     // Load App Heuristic information
     int jobScore = 0;
     result.yarnAppHeuristicResults = new ArrayList<AppHeuristicResult>();
@@ -287,7 +283,6 @@ public class AnalyticJob {
           AppHeuristicResult.HEURISTIC_NAME_LIMIT, getAppId());
       detail.severity = heuristicResult.getSeverity();
       detail.score = heuristicResult.getScore();
-
       // Load Heuristic Details
       for (HeuristicResultDetails heuristicResultDetails : heuristicResult.getHeuristicResultDetails()) {
         AppHeuristicResultDetails heuristicDetail = new AppHeuristicResultDetails();
@@ -308,10 +303,8 @@ public class AnalyticJob {
     }
     result.severity = worstSeverity;
     result.score = jobScore;
-
     // Retrieve information from job configuration like scheduler information and store them into result.
     InfoExtractor.loadInfo(result, data);
-
     return result;
   }
 
