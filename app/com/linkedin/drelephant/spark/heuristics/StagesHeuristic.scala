@@ -26,6 +26,7 @@ import com.linkedin.drelephant.configurations.heuristic.HeuristicConfigurationDa
 import com.linkedin.drelephant.math.Statistics
 import com.linkedin.drelephant.spark.data.SparkApplicationData
 import com.linkedin.drelephant.spark.fetchers.statusapiv1.StageData
+import models.PartitionDataSet
 import org.apache.log4j.Logger
 import org.apache.spark.status.api.v1.StageStatus
 
@@ -37,7 +38,8 @@ import org.apache.spark.status.api.v1.StageStatus
   * each stage.
   */
 class StagesHeuristic(private val heuristicConfigurationData: HeuristicConfigurationData)
-    extends Heuristic[SparkApplicationData] {
+  extends Heuristic[SparkApplicationData] {
+
   import StagesHeuristic._
   import JavaConverters._
 
@@ -68,9 +70,9 @@ class StagesHeuristic(private val heuristicConfigurationData: HeuristicConfigura
       f"stage ${stageData.stageId}, attempt ${stageData.attemptId} (task failure rate: ${taskFailureRate}%1.3f)"
 
     def formatStagesWithLongAverageExecutorRuntimes(stagesWithLongAverageExecutorRuntimes: Seq[(StageData, Long)]): String =
-       stagesWithLongAverageExecutorRuntimes
-         .map { case (stageData, runtime) => formatStageWithLongRuntime(stageData, runtime) }
-         .mkString("\n")
+      stagesWithLongAverageExecutorRuntimes
+        .map { case (stageData, runtime) => formatStageWithLongRuntime(stageData, runtime) }
+        .mkString("\n")
 
     def formatStageWithLongRuntime(stageData: StageData, runtime: Long): String =
       f"stage ${stageData.stageId}, attempt ${stageData.attemptId} (runtime: ${Statistics.readableTimespan(runtime)})"
@@ -129,23 +131,35 @@ object StagesHeuristic {
     lazy val stageDatas: Seq[StageData] = data.stageDatas
 
     stageDatas.foreach(
-      stageData=>
+      stageData => {
+        val partitionDataSet: PartitionDataSet=new PartitionDataSet
+        partitionDataSet.inputDataSize = stageData.inputBytes
+        partitionDataSet.partitionNums= stageData.numCompleteTasks+stageData.numFailedTasks
+        partitionDataSet.shuffleDataSize=stageData.shuffleWriteBytes
+        partitionDataSet.stageDuration=stageData.executorRunTime
+        partitionDataSet.save()
         logger.info(s"StageName:${stageData.name}\tstage:${stageData.stageId}\t" +
-          s"executorTime:${stageData.executorRunTime}\n" +
-          s"partitionNum:${stageData.numCompleteTasks+stageData.numFailedTasks}\n" +
-          s"inputDataSize:${stageData.inputBytes}\tinputRecords:${stageData.inputRecords}\n" +
-          s"outputDataSize:${stageData.outputBytes}\toutputRecords:${stageData.outputRecords}\n" +
-          s"shuffleReadBytes:${stageData.shuffleReadBytes}\tshuffleReadRecords:${stageData.shuffleReadRecords}\n" +
-          s"shuffleWriteBytes:${stageData.shuffleWriteBytes}\tshuffleWriteRecords:${stageData.shuffleWriteRecords}"))
+                  s"executorTime:${stageData.executorRunTime}\n" +
+                  s"partitionNum:${stageData.numCompleteTasks+stageData.numFailedTasks}\n" +
+                  s"inputDataSize:${stageData.inputBytes}\tinputRecords:${stageData.inputRecords}\n" +
+                  s"outputDataSize:${stageData.outputBytes}\toutputRecords:${stageData.outputRecords}\n" +
+                  s"shuffleReadBytes:${stageData.shuffleReadBytes}\tshuffleReadRecords:${stageData.shuffleReadRecords}\n" +
+                  s"shuffleWriteBytes:${stageData.shuffleWriteBytes}\tshuffleWriteRecords:${stageData.shuffleWriteRecords}")
+      })
+
 
     lazy val appConfigurationProperties: Map[String, String] =
       data.appConfigurationProperties
 
     lazy val executorSummaries: Seq[ExecutorSummary] = data.executorSummaries
 
-    lazy val numCompletedStages: Int = stageDatas.count { _.status == StageStatus.COMPLETE }
+    lazy val numCompletedStages: Int = stageDatas.count {
+      _.status == StageStatus.COMPLETE
+    }
 
-    lazy val numFailedStages: Int = stageDatas.count { _.status == StageStatus.FAILED }
+    lazy val numFailedStages: Int = stageDatas.count {
+      _.status == StageStatus.FAILED
+    }
 
     lazy val stageFailureRate: Option[Double] = {
       val numStages = numCompletedStages + numFailedStages
@@ -211,8 +225,8 @@ object StagesHeuristic {
   }
 
   def minutesSeverityThresholdsToMillisSeverityThresholds(
-    minutesSeverityThresholds: SeverityThresholds
-  ): SeverityThresholds = SeverityThresholds(
+                                                           minutesSeverityThresholds: SeverityThresholds
+                                                         ): SeverityThresholds = SeverityThresholds(
     Duration(minutesSeverityThresholds.low.longValue, duration.MINUTES).toMillis,
     Duration(minutesSeverityThresholds.moderate.longValue, duration.MINUTES).toMillis,
     Duration(minutesSeverityThresholds.severe.longValue, duration.MINUTES).toMillis,
