@@ -4,6 +4,7 @@ import play.db.ebean.Model;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
+import javax.persistence.Id;
 import javax.persistence.Table;
 
 /**
@@ -12,7 +13,10 @@ import javax.persistence.Table;
 @Entity
 @Table(name="partition_data")
 public class PartitionDataSet extends Model{
-
+    @Column
+    public int stageId;
+    @Column
+    public String stageName;
     @Column
     public Long inputDataSize;
     @Column

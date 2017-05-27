@@ -133,6 +133,8 @@ object StagesHeuristic {
     stageDatas.foreach(
       stageData => {
         val partitionDataSet: PartitionDataSet=new PartitionDataSet
+        partitionDataSet.stageId=stageData.stageId
+        partitionDataSet.stageName=stageData.name
         partitionDataSet.inputDataSize = stageData.inputBytes
         partitionDataSet.partitionNums= stageData.numCompleteTasks+stageData.numFailedTasks
         partitionDataSet.shuffleDataSize=stageData.shuffleWriteBytes
